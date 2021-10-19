@@ -1,7 +1,11 @@
+## Environments
+- CPU
+
 ## How to run
 1. build and install tvm with this repo (add printing info based on `tenset` repo)
 2. run following commands:
 ```
+cd my_scripts
 python tune_and_compile.py > log
 ```
 
