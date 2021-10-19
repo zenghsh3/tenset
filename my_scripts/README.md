@@ -10,6 +10,7 @@ python tune_and_compile.py > log
 ```
 
 ## 结果
+输出日志见log文件
 - extract_tasks (include simple tasks)
   - 总共有71个tasks（包括重复）
 - build (ApplyHistoryBest)
