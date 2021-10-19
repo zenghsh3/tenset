@@ -268,6 +268,7 @@ class ApplyHistoryBest(DispatchContext):
                 " above the dispatcher call. So does other target. "
             )
 
+        print("dispatch.query key: ", workload_key)
         def match_record(best_records, target_key, workload_key):
             """The helper function to match the record in the given map
             and return the matched state, or None if no match.
