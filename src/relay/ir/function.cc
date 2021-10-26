@@ -37,6 +37,7 @@ Function::Function(tvm::Array<Var> params, Expr body, Type ret_type,
   n->type_params = std::move(type_params);
   n->attrs = std::move(attrs);
   n->span = std::move(span);
+  n->index = -1;
   data_ = std::move(n);
 }
 

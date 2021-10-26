@@ -38,6 +38,9 @@ namespace relay {
  */
 class FunctionNode : public BaseFuncNode {
  public:
+  /*! \brief The index of the subgraph on Module */
+  int index;
+
   /*! \brief Function parameters */
   tvm::Array<Var> params;
   /*!
