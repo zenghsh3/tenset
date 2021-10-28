@@ -85,7 +85,7 @@ class Inliner : ExprMutator {
 
   Function Inline(const Function& func) {
     return Function(func->params, VisitExpr(func->body), func->ret_type, func->type_params,
-                    func->attrs);
+                    func->attrs, Span(), func->index);
   }
 
  private:
@@ -119,7 +119,7 @@ class Inliner : ExprMutator {
     const auto* fn = base_func.as<FunctionNode>();
     ICHECK(fn) << "Expected to work on a Relay function.";
 
-    auto func = Function(fn->params, fn->body, fn->ret_type, fn->type_params, fn->attrs);
+    auto func = Function(fn->params, fn->body, fn->ret_type, fn->type_params, fn->attrs, Span(), func->index);
     // Inline the function body to the caller if this function uses default
     // compiler, i.e. no external codegen is needed.
     if (!func->GetAttr<String>(attr::kCompiler).defined()) {

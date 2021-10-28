@@ -205,7 +205,7 @@ class Partitioner : public MixedModeMutator {
       if (auto* fn = pair.second.as<FunctionNode>()) {
         auto func = GetRef<Function>(fn);
         func = Function(func->params, VisitExpr(func->body), func->ret_type, func->type_params,
-                        func->attrs);
+                        func->attrs, Span(), func->index);
         module_->Update(pair.first, func);
         module_ = transform::InferType()(module_);
       }
@@ -416,7 +416,7 @@ IRModule RemoveDefaultAnnotations(IRModule module) {
       auto func = GetRef<Function>(fn);
       DefaultRemover remover;
       auto removed = PostOrderRewrite(func->body, &remover);
-      func = Function(func->params, removed, func->ret_type, func->type_params, func->attrs);
+      func = Function(func->params, removed, func->ret_type, func->type_params, func->attrs, Span(), func->index);
       module->Update(pair.first, func);
       module = relay::transform::InferType()(module);
     }
@@ -472,7 +472,7 @@ IRModule FlattenTupleOutputs(IRModule module) {
       auto func = GetRef<Function>(fn);
       TupleOutFlattener to_flattener;
       auto removed = PostOrderRewrite(func->body, &to_flattener);
-      func = Function(func->params, removed, func->ret_type, func->type_params, func->attrs);
+      func = Function(func->params, removed, func->ret_type, func->type_params, func->attrs, Span(), func->index);
       module->Update(pair.first, func);
       module = relay::transform::InferType()(module);
     }

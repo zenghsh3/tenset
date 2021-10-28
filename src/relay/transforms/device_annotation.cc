@@ -498,12 +498,12 @@ Expr RewriteAnnotatedOps(const Expr& expr, int fallback_device) {
       }
       ICHECK_GT(new_body.size(), 0U);
       if (new_body.size() == 1) {
-        return Function(params, new_body[0], Type(nullptr), fn->type_params, fn->attrs);
+        return Function(params, new_body[0], Type(nullptr), fn->type_params, fn->attrs, Span(), fn->index);
       } else if (tuple->fields.size() == new_body.size()) {
         return new_expr;
       } else {
         Tuple tuple_body = Tuple(new_body);
-        return Function(params, tuple_body, Type(nullptr), fn->type_params, fn->attrs);
+        return Function(params, tuple_body, Type(nullptr), fn->type_params, fn->attrs, Span(), fn->index);
       }
     } else {
       return new_expr;

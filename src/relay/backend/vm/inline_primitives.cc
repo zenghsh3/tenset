@@ -139,7 +139,7 @@ struct PrimitiveInliner : ExprMutator {
         DLOG(INFO) << "Before inlining primitives: " << global << std::endl << AsText(func, false);
 
         func = Function(func->params, VisitExpr(func->body), func->ret_type, func->type_params,
-                        func->attrs);
+                        func->attrs, Span(), func->index);
         module_->Add(global, func, true);
 
         DLOG(INFO) << "After inlining primitives: " << global << std::endl << AsText(func, false);

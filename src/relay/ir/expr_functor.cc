@@ -215,7 +215,7 @@ Expr ExprMutator::VisitExpr_(const FunctionNode* op) {
       body.same_as(op->body)) {
     return GetRef<Expr>(op);
   } else {
-    return Function(params, body, ret_type, ty_params, op->attrs, op->span);
+    return Function(params, body, ret_type, ty_params, op->attrs, op->span, op->index);
   }
 }
 
@@ -535,7 +535,7 @@ Expr Bind(const Expr& expr, const tvm::Map<Var, Expr>& args_map) {
     if (new_body.same_as(func->body) && new_params.size() == func->params.size()) {
       return expr;
     }
-    auto ret = Function(new_params, new_body, func->ret_type, func->type_params, func->attrs);
+    auto ret = Function(new_params, new_body, func->ret_type, func->type_params, func->attrs, Span(), func->index);
     std::unordered_set<Var, ObjectPtrHash, ObjectPtrEqual> set;
     for (const auto& v : FreeVars(expr)) {
       set.insert(v);
@@ -545,7 +545,7 @@ Expr Bind(const Expr& expr, const tvm::Map<Var, Expr>& args_map) {
         new_params.push_back(v);
       }
     }
-    ret = Function(new_params, new_body, func->ret_type, func->type_params, func->attrs);
+    ret = Function(new_params, new_body, func->ret_type, func->type_params, func->attrs, Span(), func->index);
     ICHECK_EQ(FreeVars(expr).size(), FreeVars(ret).size());
     return std::move(ret);
   } else {

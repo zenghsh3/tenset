@@ -98,7 +98,7 @@ Pass QuantizeAnnotate() {
         for (const auto& x : FreeVars(func)) {
           new_params.push_back(x);
         }
-        return Function(new_params, func->body, func->ret_type, func->type_params, func->attrs);
+        return Function(new_params, func->body, func->ret_type, func->type_params, func->attrs, Span(), func->index);
       };
   return CreateFunctionPass(pass_func, 1, "QuantizeAnnotate", {});
 }

@@ -343,6 +343,10 @@ class RelayBuildModule : public runtime::ModuleNode {
     // Do layout rewrite for auto-scheduler.
     if (backend::IsAutoSchedulerEnabled() && targets.size() == 1) {
       const auto& target = (*targets.begin()).second;
+      Pass subgraph_sequencing_pass = transform::AutoSchedulerSubGraphSequencing();
+      if (pass_ctx.PassEnabled(subgraph_sequencing_pass->Info())) {
+        relay_module = subgraph_sequencing_pass(relay_module);
+      }
       Pass major_pass = transform::AutoSchedulerLayoutRewrite();
       bool enable_layout_rewrite_targets =
           target->kind->device_type == kDLCPU || target->GetAttr<String>("device", "") == "mali";
@@ -353,6 +357,9 @@ class RelayBuildModule : public runtime::ModuleNode {
         relay_module = transform::DefuseOps()(relay_module);
         relay_module = transform::FoldConstant()(relay_module);
         relay_module = transform::FuseOps()(relay_module);
+        if (pass_ctx.PassEnabled(subgraph_sequencing_pass->Info())) {
+        relay_module = subgraph_sequencing_pass(relay_module);
+      }
       }
     }
 

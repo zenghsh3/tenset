@@ -227,7 +227,7 @@ class DynamicToStaticMutator : public MixedModeMutator {
       func = GetRef<BaseFunc>(func_node);
     } else {
       func =
-          relay::Function(relay::FreeVars(expr), expr, Type(), relay::FreeTypeVars(expr, mod_), {});
+          relay::Function(relay::FreeVars(expr), expr, Type(), relay::FreeTypeVars(expr, mod_), {}, Span(), func->index);
     }
     mod_->Update(gv_, func);
     mod_ = transform::FoldConstant()(mod_);
@@ -271,7 +271,7 @@ class DynamicToStaticMutator : public MixedModeMutator {
   Expr DispatchVisitExpr(const Expr& expr) override {
     auto post = MixedModeMutator::DispatchVisitExpr(expr);
     if (auto op = post.as<FunctionNode>()) {
-      return Function(op->params, op->body, NullValue<Type>(), op->type_params, op->attrs);
+      return Function(op->params, op->body, NullValue<Type>(), op->type_params, op->attrs, Span(), op->index);
     }
     return post;
   }

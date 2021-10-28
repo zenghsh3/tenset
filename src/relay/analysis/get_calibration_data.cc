@@ -101,7 +101,7 @@ IRModule GetCalibrateModule(IRModule module) {
         PostOrderRewrite(func->body, &collector);
         auto new_outputs = collector.GetNewOutputs();
         Expr tuple = FlattenOutputTuple(new_outputs);
-        func = Function(func->params, tuple, tuple->checked_type_, func->type_params, func->attrs);
+        func = Function(func->params, tuple, tuple->checked_type_, func->type_params, func->attrs, Span(), func->index);
         module->Update(pair.first, func);
       }
     }
