@@ -119,7 +119,7 @@ class Inliner : ExprMutator {
     const auto* fn = base_func.as<FunctionNode>();
     ICHECK(fn) << "Expected to work on a Relay function.";
 
-    auto func = Function(fn->params, fn->body, fn->ret_type, fn->type_params, fn->attrs, Span(), func->index);
+    auto func = Function(fn->params, fn->body, fn->ret_type, fn->type_params, fn->attrs, Span(), fn->index);
     // Inline the function body to the caller if this function uses default
     // compiler, i.e. no external codegen is needed.
     if (!func->GetAttr<String>(attr::kCompiler).defined()) {

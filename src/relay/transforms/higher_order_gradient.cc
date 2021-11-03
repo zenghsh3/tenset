@@ -456,7 +456,7 @@ Expr Gradient(const Expr& re, const Optional<IRModule>& mod) {
     };
     return Pair(get_final_result(c, f->body->checked_type()), Tuple(ret));
   });
-  auto ret = Function(f->params, body, GradRetType(GetRef<Function>(f)), {}, {}, Span(), func->index);
+  auto ret = Function(f->params, body, GradRetType(GetRef<Function>(f)), {}, {}, Span(), f->index);
   CheckFeature(ret, FeatureSet::All() - fGraph);
   return std::move(ret);
 }

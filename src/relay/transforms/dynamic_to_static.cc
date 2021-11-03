@@ -227,7 +227,7 @@ class DynamicToStaticMutator : public MixedModeMutator {
       func = GetRef<BaseFunc>(func_node);
     } else {
       func =
-          relay::Function(relay::FreeVars(expr), expr, Type(), relay::FreeTypeVars(expr, mod_), {}, Span(), func->index);
+          relay::Function(relay::FreeVars(expr), expr, Type(), relay::FreeTypeVars(expr, mod_), {}, Span());
     }
     mod_->Update(gv_, func);
     mod_ = transform::FoldConstant()(mod_);
