@@ -132,6 +132,7 @@ def extract_tasks(
     # create search tasks
     tasks = []
     weights = []
+    wkl_key_to_tasks = {}
     for wkl_key, weight in env.wkl_key_to_weight.items():
         tasks.append(
             SearchTask(
@@ -145,8 +146,9 @@ def extract_tasks(
             )
         )
         weights.append(weight)
+        wkl_key_to_tasks[wkl_key] = tasks[-1]
 
-    return tasks, weights
+    return tasks, weights, wkl_key_to_tasks, env.wkl_key_list, env.func_names
 
 
 class TracingMode:
@@ -166,6 +168,8 @@ class TracingEnvironment:
         self.tracing_mode = tracing_mode
         self.relay_disable_build_cache = "false"
         self.wkl_key_to_weight = {}
+        self.wkl_key_list = []
+        self.func_names = []
 
     def __enter__(self):
         TracingEnvironment.current = self
@@ -174,7 +178,7 @@ class TracingEnvironment:
     def __exit__(self, exc_type, exc_val, exc_tb):
         TracingEnvironment.current = None
 
-    def add_workload_key(self, workload_key):
+    def add_workload_key(self, workload_key, func_name):
         """Add the workload key of a search task
 
         Parameters
@@ -185,6 +189,8 @@ class TracingEnvironment:
         if workload_key not in self.wkl_key_to_weight:
             self.wkl_key_to_weight[workload_key] = 0
         self.wkl_key_to_weight[workload_key] += 1
+        self.wkl_key_list.append(workload_key)
+        self.func_names.append(func_name)
 
 
 @tvm._ffi.register_func("auto_scheduler.enter_layout_rewrite")
@@ -307,7 +313,7 @@ def auto_schedule_topi(func_name, outs):
     if env.tracing_mode in [TracingMode.EXTRACT_TASK, TracingMode.EXTRACT_COMPLEX_TASK_ONLY]:
         # in the task extraction mode
         if has_complex_op or env.tracing_mode == TracingMode.EXTRACT_TASK:
-            env.add_workload_key(key)
+            env.add_workload_key(key, func_name)
     elif env.tracing_mode == TracingMode.PREPARE_LAYOUT_REWRITE:
         # in prepare_layout_rewrite mode
         if (

@@ -34,7 +34,7 @@ from . import workload_registry
 # Shortcut
 from .compute_dag import ComputeDAG, LayoutRewriteOption, get_shape_from_rewritten_layout
 from .cost_model import RandomModel, XGBModel
-from .dispatcher import DispatchContext, ApplyHistoryBest, ApplyHistoryBestOrSample
+from .dispatcher import DispatchContext, ApplyHistoryBest, ApplyHistoryBestOrSample, ApplyRecordsList
 from .measure import (
     MeasureInput,
     MeasureResult,

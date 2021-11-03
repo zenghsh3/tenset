@@ -129,6 +129,22 @@ class DispatchContext(object):
         DispatchContext.current = self._old_ctx
 
 
+class ApplyRecordsList(DispatchContext):
+    def __init__(self, func_name_to_program):
+        super(ApplyRecordsList, self).__init__()
+        self.func_name_to_program = func_name_to_program
+
+    def _query_inside(self, target, workload_key, func_name):
+        if func_name in self.func_name_to_program:
+            inp, score = self.func_name_to_program[func_name]
+            return inp.state
+
+        return None
+
+    def update(self, target, workload_key, state):
+        pass
+ 
+
 class ApplyHistoryBest(DispatchContext):
     """
     Apply the history best config
