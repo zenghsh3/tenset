@@ -44,6 +44,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <string>
 
 #include "../transforms/pass_utils.h"
 #include "utils.h"
@@ -127,7 +128,8 @@ class ScheduleGetter : public backend::MemoizedExprTranslator<Array<te::Tensor>>
       }
       memo_[param] = inputs;
     }
-    readable_name_stream_ << "fused";
+    
+    readable_name_stream_ << std::to_string(prim_func->index) << "_" << "fused";
     cache_node->outputs = this->VisitExpr(prim_func->body);
     auto candidate_name = readable_name_stream_.str();
     constexpr static size_t kMaxFuncNameLength = 80;
@@ -157,6 +159,7 @@ class ScheduleGetter : public backend::MemoizedExprTranslator<Array<te::Tensor>>
             runtime::Registry::Get("auto_scheduler.relay_integration.auto_schedule_topi_compute");
         ICHECK(fauto_schedule != nullptr)
             << "auto_scheduler.relay_integration.auto_schedule_topi_compute is not registered";
+        std::cout << "ScheduleGetter().ctreat :" << candidate_name << std::endl;
         ObjectRef obj = (*fauto_schedule)(String(cache_node->func_name), tensor_outs);
         if (obj.defined()) {
           schedule = Downcast<te::Schedule>(obj);

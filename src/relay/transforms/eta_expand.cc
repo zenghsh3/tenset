@@ -130,7 +130,7 @@ class EtaExpander : public ExprMutator {
         args.push_back(var);
       }
 
-      return Function(args, Call(gvar, params), func->ret_type, func->type_params);
+      return Function(args, Call(gvar, params), func->ret_type, func->type_params, {}, Span(), func->index);
     } else {
       return std::move(gvar);
     }

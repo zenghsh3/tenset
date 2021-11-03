@@ -90,7 +90,7 @@ Expr DeDup(const Expr& e) {
       for (const Var& param : op->params) {
         params.push_back(Fresh(param));
       }
-      return Function(params, VisitExpr(op->body), VisitType(op->ret_type), type_params, op->attrs);
+      return Function(params, VisitExpr(op->body), VisitType(op->ret_type), type_params, op->attrs, Span(), op->index);
     }
 
     Pattern VisitPattern(const Pattern& p) final { return PatternFunctor::VisitPattern(p); }

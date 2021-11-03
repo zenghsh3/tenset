@@ -362,7 +362,7 @@ struct ReverseAD : ExprMutator {
     auto new_bp = Var("bp", bpt);
     params.push_back(new_bp);
     return Function(params, ReverseAD(mod, new_bp, ad_vars, ad_gvars)(op->body),
-                    VisitType(op->ret_type), op->type_params, op->attrs);
+                    VisitType(op->ret_type), op->type_params, op->attrs, Span(), op->index);
   }
 
   Type VisitType(const Type& t) final { return t.defined() ? ReverseType(t) : t; }
@@ -456,7 +456,7 @@ Expr Gradient(const Expr& re, const Optional<IRModule>& mod) {
     };
     return Pair(get_final_result(c, f->body->checked_type()), Tuple(ret));
   });
-  auto ret = Function(f->params, body, GradRetType(GetRef<Function>(f)), {});
+  auto ret = Function(f->params, body, GradRetType(GetRef<Function>(f)), {}, {}, Span(), func->index);
   CheckFeature(ret, FeatureSet::All() - fGraph);
   return std::move(ret);
 }

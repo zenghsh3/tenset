@@ -185,7 +185,7 @@ class LambdaLifter : public ExprMutator {
       // on type inference.
       auto before = Downcast<Function>(body)->params.size();
       auto rebound_body = Function(func->params, Bind(body->body, rebinding_map), func->ret_type,
-                                   func->type_params, func->attrs, func->span);
+                                   func->type_params, func->attrs, func->span, func->index);
       auto after = Downcast<Function>(rebound_body)->params.size();
       CHECK_EQ(before, after);
       lifted_func =
@@ -227,7 +227,7 @@ class LambdaLifter : public ExprMutator {
         if (n->GetAttr<String>(attr::kCompiler).defined()) continue;
         auto func = GetRef<Function>(n);
         func = Function(func->params, VisitExpr(func->body), func->ret_type, func->type_params,
-                        func->attrs);
+                        func->attrs, Span(), func->index);
         module_->Add(pair.first, func, true);
       }
     }

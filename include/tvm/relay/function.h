@@ -38,6 +38,9 @@ namespace relay {
  */
 class FunctionNode : public BaseFuncNode {
  public:
+  /*! \brief The index of the subgraph on Module */
+  int index;
+
   /*! \brief Function parameters */
   tvm::Array<Var> params;
   /*!
@@ -65,6 +68,7 @@ class FunctionNode : public BaseFuncNode {
     v->Visit("type_params", &type_params);
     v->Visit("attrs", &attrs);
     v->Visit("span", &span);
+    v->Visit("index", &index);
     v->Visit("_checked_type_", &checked_type_);
   }
 
@@ -113,7 +117,7 @@ class Function : public BaseFunc {
    * \param span The span of the function.
    */
   TVM_DLL Function(tvm::Array<Var> params, Expr body, Type ret_type, tvm::Array<TypeVar> ty_params,
-                   tvm::DictAttrs attrs = NullValue<DictAttrs>(), Span span = Span());
+                   tvm::DictAttrs attrs = NullValue<DictAttrs>(), Span span = Span(), int index = -1);
 
   TVM_DEFINE_OBJECT_REF_METHODS(Function, BaseFunc, FunctionNode);
   TVM_DEFINE_OBJECT_REF_COW_METHOD(FunctionNode);

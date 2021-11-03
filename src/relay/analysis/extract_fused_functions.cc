@@ -55,7 +55,7 @@ class FusedFunctionExtractorWrapper : private ExprVisitor {
   void VisitExpr_(const FunctionNode* n) final {
     if (n->HasNonzeroAttr(attr::kPrimitive)) {
       // Add function to functions, keyed by function hash string
-      Function func = Function(n->params, n->body, n->ret_type, n->type_params, n->attrs);
+      Function func = Function(n->params, n->body, n->ret_type, n->type_params, n->attrs, n->span, n->index);
       size_t hash_ = tvm::StructuralHash()(func);
       this->functions.Set(std::to_string(hash_), func);
     }
