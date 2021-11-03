@@ -291,21 +291,6 @@ def auto_schedule_topi(func_name, outs):
     key = register_workload_tensors(dag.workload_key(), io_tensors)
     target = tvm.target.Target.current()
 
-    env = TracingEnvironment.current
-    if env is None:
-        print("current TracingEnvironment: {}, ".format(env), end='')
-    else:
-        mode = None
-        if env.tracing_mode == 0:
-            mode = "EXTRACT_TASK"
-        elif env.tracing_mode == 1:
-            mode = "EXTRACT_COMPLEX_TASK_ONLY"
-        elif env.tracing_mode == 2:
-            mode = "PREPARE_LAYOUT_REWRITE"
-        else:
-            assert False
-        print("current TracingEnvironment: {}, ".format(mode), end='')
-
     dispatch_ctx = DispatchContext.current
     state = dispatch_ctx.query(target, key, has_complex_op, dag, func_name)
     schedule = None
@@ -322,7 +307,6 @@ def auto_schedule_topi(func_name, outs):
     if env.tracing_mode in [TracingMode.EXTRACT_TASK, TracingMode.EXTRACT_COMPLEX_TASK_ONLY]:
         # in the task extraction mode
         if has_complex_op or env.tracing_mode == TracingMode.EXTRACT_TASK:
-            print("extract_tasks key: ", key)
             env.add_workload_key(key)
     elif env.tracing_mode == TracingMode.PREPARE_LAYOUT_REWRITE:
         # in prepare_layout_rewrite mode
