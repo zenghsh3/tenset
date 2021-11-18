@@ -50,6 +50,8 @@ namespace auto_scheduler {
 void GetPerStoreFeature(const Stmt& stmt, int cache_line_size, int max_n_bufs,
                         std::vector<float>* ret);
 
+void GetPerStoreFeaturesFromCompute(te::Schedule& sch, const SearchTask& task,  int max_n_bufs);
+
 /*
  * \brief Get the names of elements in the feature vector. Use this for debug and inspection.
  * \param max_n_bufs The maximum number of extracted buffers for one statement

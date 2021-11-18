@@ -681,13 +681,12 @@ ComputeDAG::ComputeDAG(Array<te::Tensor> tensors) {
   node->tensors = std::move(tensors);
   node->access_analyzer = AccessAnalyzer(node->tensors);
 
-  Array<te::Operation> out_ops;
   for (const auto& op : node->access_analyzer->ops_topo_order) {
     if (node->access_analyzer.IsOutput(op)) {
-      out_ops.push_back(op);
+      node->out_ops.push_back(op);
     }
   }
-  te::Schedule sch = te::create_schedule(out_ops);
+  te::Schedule sch = te::create_schedule(node->out_ops);
   for (auto stage : sch->stages) {
     node->ops.push_back(stage->op);
   }

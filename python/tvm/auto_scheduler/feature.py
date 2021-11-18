@@ -34,6 +34,7 @@ import numpy as np
 from .loop_state import State, StateObject
 from .measure import MeasureInput, MeasureResult
 from . import _ffi_api
+from tvm import te
 
 # The maximum number of extracted buffers for one statement
 DEFAULT_MAX_N_BUFS = 5
@@ -247,6 +248,21 @@ def get_per_store_features_from_states(
         state_objects, task, max_n_bufs or DEFAULT_MAX_N_BUFS
     )
     return unpack_feature(byte_arr)[0]
+
+
+def get_per_store_features_from_compute(
+    task, max_n_bufs=None
+):
+    sch = te.create_schedule(task.compute_dag.out_ops)
+    byte_arr = _ffi_api.GetPerStoreFeaturesFromCompute(
+        sch, task, max_n_bufs or DEFAULT_MAX_N_BUFS
+    )
+
+    n = struct.unpack_from("1i", byte_arr, offset=0)[0]
+    print("from_compute n:", n)
+    features = struct.unpack_from("%df" % n, byte_arr, offset=SIZE_OF_INT32)
+    print("from_compute features:", features)
+    return features
 
 
 def get_per_store_feature_names(max_n_bufs: Optional[int] = None) -> List[str]:
