@@ -175,6 +175,7 @@ class ComputeDAGNode : public Object {
   Array<te::Tensor> tensors;
   /*! \brief All used operations in topo order. */
   Array<te::Operation> ops;
+  Array<te::Operation> out_ops;
   /*! \brief The number of float operations in this ComputeDAG. */
   double flop_ct;
   /*! \brief The initial state without any transform steps. */
@@ -185,6 +186,7 @@ class ComputeDAGNode : public Object {
   void VisitAttrs(tvm::AttrVisitor* v) {
     v->Visit("tensors", &tensors);
     v->Visit("ops", &ops);
+    v->Visit("out_ops", &ops);
     v->Visit("flop_ct", &flop_ct);
     v->Visit("init_state", &init_state);
     v->Visit("access_analyzer", &access_analyzer);

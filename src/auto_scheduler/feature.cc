@@ -1056,7 +1056,6 @@ void GetPerStoreFeature(const Stmt& stmt, int cache_line_size, int max_n_bufs,
   extractor(stmt);
 
   ret->push_back(extractor.buffer_features.size());
-
   for (const auto& x : extractor.buffer_features) {
     const FeatureSet& fea_set = x.second;
 
@@ -1367,6 +1366,103 @@ void GetPerStoreFeaturesWorkerFunc(const SearchTask& task, const State& state, i
   }
 }
 
+void GetPerStoreFeaturesFromCompute(const SearchTask& task, te::Schedule sch, const Array<te::Tensor>* tensors, int max_n_bufs,
+                                   std::vector<float>* feature, std::atomic<int>* error_ct) {
+  sch = sch.normalize_for_feature_extraction();
+  auto bounds = te::InferBound(sch);
+
+  try {
+    auto stmt = te::ScheduleOps(sch, bounds, false);
+    Map<te::Tensor, te::Buffer> out_binds;
+    Array<ObjectRef> out_arg_list;
+    bool compact = te::VerifyCompactBuffer(stmt);
+    const std::string& name = "main";
+    GlobalVar global_var(name);
+
+    // Copied from driver_api.cc::lower  
+    // 使用tvm::lower 会优化成非StoreNode，无法统计
+    auto pass_ctx = tvm::transform::PassContext::Current();
+    GetBinds(*tensors, compact, std::unordered_map<te::Tensor, te::Buffer>(), &out_binds,
+             &out_arg_list);
+    tir::PrimFunc f = te::SchedulePostProcToPrimFunc(out_arg_list, std::move(stmt), out_binds);
+    f = WithAttr(std::move(f), "global_symbol", runtime::String(name));
+
+    bool noalias = pass_ctx->GetConfig<Bool>("tir.noalias", Bool(true)).value();
+    bool disable_vectorize =
+        pass_ctx->GetConfig<Bool>("tir.disable_vectorize", Bool(false)).value();
+    bool instrument_bound_checkers =
+        pass_ctx->GetConfig<Bool>("tir.instrument_bound_checkers", Bool(false)).value();
+
+    if (noalias) {
+      f = WithAttr(std::move(f), "tir.noalias", Bool(true));
+    }
+    auto mod = IRModule(Map<GlobalVar, BaseFunc>({{global_var, f}}));
+
+    if (IsGPUTask(task)) {
+      auto pass_list = Array<tvm::transform::Pass>();
+      // Phase 0
+      pass_list.push_back(tir::transform::InjectPrefetch());
+      pass_list.push_back(tir::transform::StorageFlatten(64, instrument_bound_checkers));
+      // Phase 1
+      pass_list.push_back(tir::transform::NarrowDataType(32));
+      pass_list.push_back(tir::transform::Simplify());
+      pass_list.push_back(tir::transform::VectorizeLoop(!disable_vectorize));
+      pass_list.push_back(tir::transform::InjectVirtualThread());
+      pass_list.push_back(tir::transform::StorageRewrite());
+      pass_list.push_back(tir::transform::Simplify());
+      tvm::Map<String, tvm::PrimExpr> gpu_params{
+          {"max_shared_memory_per_block", task->hardware_params->max_shared_memory_per_block},
+          {"max_local_memory_per_block", task->hardware_params->max_local_memory_per_block},
+          {"max_threads_per_block", task->hardware_params->max_threads_per_block},
+          {"max_vector_bytes", task->hardware_params->vector_unit_bytes},
+          {"max_vthread", task->hardware_params->max_vthread_extent},
+      };
+      pass_list.push_back(tir::transform::VerifyGPUCode(gpu_params));
+      const auto& optimize = tir::transform::Sequential(pass_list);
+      optimize(mod);
+    }
+    const auto& optimize =
+        tir::transform::Sequential(Array<tvm::transform::Pass>{tir::transform::Simplify()});
+    mod = optimize(std::move(mod));
+    const auto& it = mod->functions.find(global_var);
+    ICHECK(it != mod->functions.end());
+    const auto& prim_func = (*it).second.as<PrimFuncNode>();
+
+    PerStoreFeatureExtractor extractor(task->hardware_params->cache_line_bytes);
+    // std::cout << " body:" << prim_func->body << std::endl;
+    extractor(prim_func->body);
+
+    std::vector<float> ret(16, 0.0);
+    for (const auto& x : extractor.buffer_features) {
+      const FeatureSet& fea_set = x.second;
+      /***** Computation related features *****/
+      ret[0] += fea_set.float_mad;
+      ret[1] += fea_set.float_addsub;
+      ret[2] += fea_set.float_mul;
+      ret[3] += fea_set.float_divmod;
+      ret[4] += fea_set.float_cmp;
+      ret[5] += fea_set.float_math_func;
+      ret[6] += fea_set.float_other_func;
+      ret[7] += fea_set.int_mad;
+      ret[8] += fea_set.int_addsub;
+      ret[9] += fea_set.int_mul;
+      ret[10] += fea_set.int_divmod;
+      ret[11] += fea_set.int_cmp;
+      ret[12] += fea_set.int_math_func;
+      ret[13] += fea_set.int_other_func;
+      ret[14] += fea_set.bool_op;
+      ret[15] += fea_set.select_op;
+    }
+    for(auto i : ret) {
+      feature->push_back(slog(i));
+    }
+    // feature->insert(feature->end(), ret.begin(), ret.end());
+  } catch (Error& e) {
+    (*error_ct)++;
+  }
+}
+
+
 void GetPerStoreFeaturesFromStates(const Array<State>& states, const SearchTask& task,
                                    int skip_first_n_feature_extraction, int max_n_bufs,
                                    std::vector<std::vector<float>>* features) {
@@ -1621,6 +1717,24 @@ TVMByteArray SerializeFeatures(std::vector<std::vector<float>>&& features,
   return TVMByteArray{out_data->data(), total_bytes};
 }
 
+TVMByteArray SerializeFeatures2(std::vector<float>& features,
+                               std::vector<char>* out_data) {
+  size_t total_bytes = 0;
+
+  int n = features.size();
+  total_bytes += sizeof(float) * n;
+  
+  // allocate memory
+  out_data->reserve(total_bytes);
+  char* ptr = out_data->data();
+
+  // serialize features
+  memmove(ptr, features.data(), sizeof(float) * n);
+
+  return TVMByteArray{out_data->data(), total_bytes};
+}
+
+
 TVM_REGISTER_GLOBAL("auto_scheduler.GetPerStoreFeaturesFromFile")
     .set_body([](TVMArgs args, TVMRetValue* ret) {
       std::string filename = args[0];
@@ -1677,6 +1791,26 @@ TVM_REGISTER_GLOBAL("auto_scheduler.GetPerStoreFeaturesFromStates")
       std::vector<char> byte_data;
       *ret = SerializeFeatures(std::move(features), std::move(normalized_throughputs),
                                std::move(task_ids), std::move(min_costs), &byte_data);
+    });
+
+TVM_REGISTER_GLOBAL("auto_scheduler.GetPerStoreFeaturesFromCompute")
+    .set_body([](TVMArgs args, TVMRetValue* ret) {
+      te::Schedule sch = args[0];
+      SearchTask task = args[1];
+      int max_n_bufs = args[2];
+
+      std::vector<float> features;
+      std::atomic<int> error_ct(0);
+      GetPerStoreFeaturesFromCompute(task, sch, &(task->compute_dag->tensors), max_n_bufs, &features, &error_ct);
+      
+      size_t total_bytes = sizeof(float) * features.size() + sizeof(int);
+      std::vector<char> byte_data(total_bytes);
+      std::vector<int> size_vector(1, features.size());
+      char* ptr = byte_data.data();
+      memmove(ptr, reinterpret_cast<char*>(size_vector.data()), sizeof(int));
+      ptr += sizeof(int);
+      memmove(ptr, features.data(), sizeof(float) * features.size());
+      *ret = TVMByteArray{byte_data.data(), total_bytes};
     });
 
 TVM_REGISTER_GLOBAL("auto_scheduler.GetPerStoreFeatureNames")

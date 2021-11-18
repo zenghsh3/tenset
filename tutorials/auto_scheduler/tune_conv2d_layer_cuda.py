@@ -61,18 +61,29 @@ def conv2d_layer(N, H, W, CO, CI, KH, KW, stride, padding):
     out = topi.nn.relu(conv + bias)
     return [data, kernel, bias, out]
 
+@auto_scheduler.register_workload
+def matmul(N, M, K):
+    A = te.placeholder((N, K), name='A')
+    B = te.placeholder((K, M), name='B')
+    k = te.reduce_axis((0, K), name='k')
+    C = te.compute((N, M), lambda i, j: te.sum(A[i][k] * B[k][j], axis=[k]), name='C')
+    return [A, B, C]
 
 ######################################################################
 # Create the search task
 # ^^^^^^^^^^^^^^^^^^^^^^
 # We then create a search task for the last convolution layer in the resnet.
 
-target = tvm.target.Target("cuda")
+target = tvm.target.Target("llvm")
 
 # Use the last layer in ResNet-50
-N, H, W, CO, CI, KH, KW, strides, padding = 1, 7, 7, 512, 512, 3, 3, (1, 1), (1, 1)
+# N, H, W, CO, CI, KH, KW, strides, padding = 1, 7, 7, 512, 512, 3, 3, (1, 1), (1, 1)
+# task = auto_scheduler.SearchTask(
+#     func=conv2d_layer, args=(N, H, W, CO, CI, KH, KW, strides, padding), target=target
+# )
+N, M, K = 20, 40, 30
 task = auto_scheduler.SearchTask(
-    func=conv2d_layer, args=(N, H, W, CO, CI, KH, KW, strides, padding), target=target
+    func=matmul, args=(N, M, K), target=target
 )
 
 # Inspect the computational graph
@@ -98,10 +109,15 @@ print(task.compute_dag)
 # * see :any:`auto_scheduler.TuningOptions`,
 #   :any:`auto_scheduler.LocalRPCMeasureContext` for more parameters.
 
+from tvm.auto_scheduler.feature import (
+    get_per_store_features_from_measure_pairs, get_per_store_features_from_states, get_per_store_features_from_compute)
+get_per_store_features_from_compute(task)
+
+
 log_file = "conv2d.json"
 measure_ctx = auto_scheduler.LocalRPCMeasureContext(min_repeat_ms=300)
 tune_option = auto_scheduler.TuningOptions(
-    num_measure_trials=10,  # change this to 1000 to achieve the best performance
+    num_measure_trials=1,  # change this to 1000 to achieve the best performance
     runner=measure_ctx.runner,
     measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
     verbose=2,
@@ -116,7 +132,17 @@ tune_option = auto_scheduler.TuningOptions(
 # file and apply it.
 
 # Run auto-tuning (search)
-task.tune(tune_option)
+from tvm.auto_scheduler.cost_model import XGBModel
+from tvm.auto_scheduler.search_policy import SketchPolicy
+cost_model = XGBModel()
+search_policy = SketchPolicy(task, cost_model, {
+    "sample_init_min_population": 2,
+    "evolutionary_search_population": 3,
+    "evolutionary_search_num_iters": 1,
+
+})
+task.tune(tune_option, search_policy=search_policy)
+assert 0 == 1, "over"
 # Apply the best schedule
 sch, args = task.apply_best(log_file)
 
